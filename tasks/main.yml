@@ -1,0 +1,55 @@
+---
+  - name: fetch chruby
+    become: yes
+    get_url:
+      url=https://github.com/postmodern/chruby/archive/v{{ chruby_version }}.tar.gz
+      dest=/tmp
+    register: chruby_downloaded
+
+  - name: unarchive
+    become: yes
+    unarchive:
+      copy=no
+      src={{ chruby_downloaded.dest }}
+      dest=/tmp
+    when: chruby_downloaded|changed
+
+  - name: install
+    become: yes
+    shell: make install
+    args:
+      chdir: /tmp/chruby-{{ chruby_version }}
+    when: chruby_downloaded|changed
+
+  - name: cleanup tmp
+    become: yes
+    file:
+      path=/tmp/{{ item }}
+      state=absent
+    with_items:
+      - chruby-{{ chruby_version }}
+      - chruby-{{ chruby_version }}.tar.gz
+    when: chruby_downloaded|changed
+
+  - name: source chruby.sh in .profile
+    become: yes
+    lineinfile:
+      dest=/home/{{ chruby_user }}/.profile
+      line='source /usr/local/share/chruby/chruby.sh'
+      regexp="source /usr/local/share/chruby/chruby.sh"
+      state=present
+      create=yes
+      owner="{{ chruby_user }}"
+      group="{{ chruby_user }}"
+    when: chruby_downloaded|changed
+
+  - name: source auto.sh in .profile
+    become: yes
+    lineinfile:
+      dest=/home/{{ chruby_user }}/.profile
+      line='source /usr/local/share/chruby/auto.sh'
+      regexp="source /usr/local/share/chruby/auto.sh"
+      state=present
+      create=yes
+      owner="{{ chruby_user }}"
+      group="{{ chruby_user }}"
